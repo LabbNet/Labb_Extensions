@@ -9,9 +9,10 @@
  */
 
 const path = require('path');
-const { Db } = require('../src/db');
+const { createStore } = require('../src/store');
 
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, '..', 'data', 'poct.db');
+const JSON_FILE = process.env.DATA_FILE || path.join(__dirname, '..', 'data', 'poct.json');
 const SYSTEM = { id: null, username: 'seed' };
 
 const SAMPLES = [
@@ -53,8 +54,8 @@ const SAMPLES = [
   },
 ];
 
-function main() {
-  const db = new Db(DB_FILE);
+async function main() {
+  const db = createStore({ dbFile: DB_FILE, jsonFile: JSON_FILE });
 
   // Ensure an admin exists so the app is usable immediately.
   if (db.countUsers() === 0) {
@@ -82,8 +83,9 @@ function main() {
     console.log(`Seeded: ${sample.poctName} / ${sample.lotNumber} (${sample.controls.length} controls)`);
   }
 
-  console.log(`\nDone. Database: ${DB_FILE}`);
+  console.log(`\nDone. Storage: ${db.kind} (${db.location})`);
+  await db.flush();
   db.close();
 }
 
-main();
+main().catch((err) => { console.error(err); process.exit(1); });

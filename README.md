@@ -39,8 +39,8 @@ Then open:
 - **Customer view:** <http://localhost:3000/> — searchable, read-only lookup of every lot's current expiration and status.
 - **Staff console:** <http://localhost:3000/admin.html> — sign in to add lots, log controls, manage staff accounts, and view the audit log.
 
-> The app uses Node's built-in SQLite, so the npm scripts run Node with the
-> `--experimental-sqlite` flag. Requires Node 22.5+ (developed on Node 22).
+> Runs on **Node 18.17+** — no build tools or native modules required.
+> See [Storage](#data-storage) for how the database backend is chosen.
 
 ### Accounts & roles
 
@@ -114,9 +114,25 @@ Statuses: **Active** (no extension yet, not near expiry), **Extended** (has vali
 |--------|----------------|
 | `src/logic.js` | Pure expiration math (no I/O) |
 | `src/auth.js` | scrypt password hashing + token generation |
+| `src/store.js` | Storage factory — picks SQLite or the JSON fallback |
 | `src/db.js` | SQLite store: lots, controls, users, sessions, audit log |
+| `src/json-store.js` | JSON-file store with the same interface (fallback) |
 | `server.js` | Express REST API, session auth, RBAC, first-run bootstrap/migration |
 | `public/` | Customer lookup page and staff console |
 
-Data lives in a single SQLite database (`data/poct.db`) via Node's built-in
-`node:sqlite` — no native dependencies. The database file is git-ignored.
+## Data storage
+
+The app keeps everything (lots, controls, users, sessions, audit log) in a
+single local file and picks the backend automatically — **no native
+dependencies, no build step:**
+
+- **SQLite** (`data/poct.db`) via Node's built-in `node:sqlite`, used when it's
+  available — Node 24+, or Node 22.5+ started with `--experimental-sqlite`.
+- **JSON file** (`data/poct.json`) used everywhere else, including **Node 18–22**.
+  Same features, same API; ideal for the single-node volumes this app handles.
+
+Force a choice with `STORE=sqlite` or `STORE=json` if you ever need to. Both
+data files are git-ignored. If a SQLite database starts empty and a legacy
+`data/poct.json` exists, its lots are imported automatically.
+
+> **Which am I using?** The startup banner prints e.g. `Storage: json (…/poct.json)`.

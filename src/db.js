@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DatabaseSync } = require('node:sqlite');
 const { hashPassword, verifyPassword, newToken } = require('./auth');
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -14,8 +13,10 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
  * audit log recording who did what. All methods are synchronous (node:sqlite is
  * synchronous); callers may still `await` them harmlessly.
  *
- * Uses the built-in node:sqlite module — no native dependencies. Run Node with
- * the `--experimental-sqlite` flag (the npm scripts do this for you).
+ * Uses the built-in node:sqlite module — no native dependencies. Instantiated
+ * by the store factory (src/store.js) only when node:sqlite is available
+ * (Node 24+, or Node 22.5+ started with --experimental-sqlite); otherwise the
+ * factory falls back to the JSON store.
  */
 class Db {
   constructor(filePath) {
@@ -23,6 +24,10 @@ class Db {
     if (filePath !== ':memory:') {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
     }
+    // Loaded lazily so requiring this module does not throw on Node versions
+    // that lack node:sqlite (< 22.5). The store factory only instantiates Db
+    // when node:sqlite is actually available.
+    const { DatabaseSync } = require('node:sqlite');
     this.sql = new DatabaseSync(filePath);
     this.sql.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
     this._migrate();
@@ -275,6 +280,11 @@ class Db {
   listAudit(limit = 100) {
     return this.sql.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT ?')
       .all(Math.max(1, Math.min(500, limit)));
+  }
+
+  /** Writes are synchronous in SQLite; nothing to await. */
+  flush() {
+    return Promise.resolve();
   }
 
   close() {

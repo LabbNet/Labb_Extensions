@@ -3,17 +3,17 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { Db } = require('./src/db');
+const { createStore } = require('./src/store');
 const logic = require('./src/logic');
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'poct.db');
-const LEGACY_JSON = process.env.DATA_FILE || path.join(__dirname, 'data', 'poct.json');
+const JSON_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'poct.json');
 // Bootstrap admin used only when the users table is empty (first run).
 const BOOTSTRAP_USER = process.env.ADMIN_USER || 'admin';
 const BOOTSTRAP_PASSWORD = process.env.ADMIN_PASSWORD || 'labb-admin';
 
-const db = new Db(DB_FILE);
+const db = createStore({ dbFile: DB_FILE, jsonFile: JSON_FILE });
 bootstrap(db);
 
 const app = express();
@@ -207,9 +207,12 @@ function bootstrap(database) {
     }
   }
 
-  if (database.listLots().length === 0 && fs.existsSync(LEGACY_JSON)) {
+  // Only the SQLite store needs an explicit migration: the JSON store already
+  // reads data/poct.json as its own native file.
+  if (database.kind === 'sqlite' && database.listLots().length === 0
+      && JSON_FILE !== database.location && fs.existsSync(JSON_FILE)) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(LEGACY_JSON, 'utf8'));
+      const parsed = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
       const lots = Array.isArray(parsed.lots) ? parsed.lots : [];
       let imported = 0;
       for (const lot of lots) {
@@ -228,7 +231,7 @@ function bootstrap(database) {
         }
         imported += 1;
       }
-      if (imported) console.log(`Migrated ${imported} lot(s) from legacy JSON store (${LEGACY_JSON}).`);
+      if (imported) console.log(`Migrated ${imported} lot(s) from legacy JSON store (${JSON_FILE}).`);
     } catch (err) {
       console.error(`Could not migrate legacy JSON store: ${err.message}`);
     }
@@ -238,7 +241,7 @@ function bootstrap(database) {
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Labb POCT Control Tracker listening on http://localhost:${PORT}`);
-    console.log(`Database: ${DB_FILE}`);
+    console.log(`Storage: ${db.kind} (${db.location})`);
   });
 }
 
