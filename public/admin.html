@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Labb POCT Tracker — Staff</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <div class="brand">
+        <h1>Labb POCT Shelf-Life Tracker</h1>
+        <span class="tag">Staff console</span>
+      </div>
+      <nav>
+        <a href="index.html">Customer View</a>
+        <a href="admin.html">Staff Console</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="intro">
+      Record new POCT lots and log quality-control runs. Each <strong>passing</strong> control
+      extends the lot's shelf life by 60 days (up to one year total). A <strong>failing</strong>
+      control records the result but grants no extension and flags the lot as failed verification.
+      Everything you record here is immediately visible on the customer view.
+    </div>
+
+    <!-- Admin token -->
+    <div class="card">
+      <div class="token-bar">
+        <label for="token" style="font-weight:600;font-size:0.85rem">Admin token</label>
+        <input type="password" id="token" placeholder="Enter admin token to enable editing" />
+        <button class="btn secondary small" id="save-token">Save</button>
+        <span class="muted" id="token-state"></span>
+      </div>
+    </div>
+
+    <!-- New lot -->
+    <div class="card">
+      <div class="section-title">Add a POCT Lot</div>
+      <div id="lot-notice"></div>
+      <div class="grid-form">
+        <div class="field">
+          <label for="poctName">POCT Name</label>
+          <input type="text" id="poctName" placeholder="e.g. Labb Rapid Flu A/B" />
+        </div>
+        <div class="field">
+          <label for="lotNumber">Lot Number</label>
+          <input type="text" id="lotNumber" placeholder="e.g. LOT-24-00815" />
+        </div>
+        <div class="field">
+          <label for="originalExpiration">Original Expiration Date</label>
+          <input type="date" id="originalExpiration" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="add-lot">Add Lot</button>
+      </div>
+    </div>
+
+    <!-- Log control -->
+    <div class="card">
+      <div class="section-title">Log a Control Run</div>
+      <div id="control-notice"></div>
+      <div class="grid-form">
+        <div class="field">
+          <label for="ctl-lot">Lot</label>
+          <select id="ctl-lot"></select>
+        </div>
+        <div class="field">
+          <label for="ctl-date">Date Conducted</label>
+          <input type="date" id="ctl-date" />
+        </div>
+        <div class="field">
+          <label for="ctl-outcome">Outcome</label>
+          <select id="ctl-outcome">
+            <option value="Pass">Pass</option>
+            <option value="Fail">Fail</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ctl-by">Performed By</label>
+          <input type="text" id="ctl-by" placeholder="Technician name / initials" />
+        </div>
+        <div class="field" style="grid-column: 1 / -1">
+          <label for="ctl-notes">Notes (optional)</label>
+          <textarea id="ctl-notes" placeholder="Control lot #, instrument, observations…"></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="add-control">Record Control</button>
+      </div>
+    </div>
+
+    <!-- Existing lots -->
+    <div class="card">
+      <div class="section-title">Recorded Lots</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>POCT</th><th>Lot #</th><th>Original</th><th>Current</th>
+              <th>Extension</th><th>Controls</th><th>Days Left</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="admin-rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="admin-empty" style="display:none">No lots recorded yet.</div>
+    </div>
+  </main>
+
+  <!-- Lot detail modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="m-title">Lot detail</h2>
+        <button class="close" id="m-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <footer class="foot">Labb POCT Shelf-Life Tracker &middot; Staff console</footer>
+
+  <script src="render.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "labb-poct-control-tracker",
+  "version": "1.0.0",
+  "description": "Track quality-control runs on Labb rapid point-of-care tests and the resulting shelf-life extensions, and publish them for customers.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "seed": "node scripts/seed.js"
+  },
+  "keywords": [
+    "poct",
+    "point-of-care",
+    "quality-control",
+    "expiration",
+    "labb"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
