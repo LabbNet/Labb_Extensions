@@ -6,8 +6,8 @@ A web app for tracking quality-control (QC) runs on **Labb rapid point-of-care t
 
 Labb rapid POCTs ship with a **24-month** expiration date. When a lot reaches expiration, its shelf life can be extended by running a quality control test:
 
-- Each **passing** control extends the lot's shelf life by **60 days**.
-- Controls can be repeated **every 60 days** to keep extending the lot, up to a **maximum of one additional year (365 days)** beyond the original expiration.
+- Each **passing** control extends the expiration to **60 days after the control's date**.
+- Controls can be repeated (roughly every 60 days) to keep extending the lot, up to a **maximum of one additional year (365 days)** beyond the original expiration.
 - A **failing** control grants no extension and flags the lot as *Verification Failed* — it should not be used past its current expiration.
 
 Labb staff sign in to record each control run; customers look up their lot number to see the current verified expiration date.
@@ -104,7 +104,11 @@ The rules live in a single pure module, [`src/logic.js`](src/logic.js), covered 
 npm test
 ```
 
-`currentExpiration = originalExpiration + min(passingControls × 60, 365) days`
+Each passing control extends the expiration to **60 days after that control's date**; the most
+recent passing control governs the current expiration, never falling before the original date and
+capped at **365 days beyond** it:
+
+`currentExpiration = clamp(latestPassingControlDate + 60 days, originalExpiration, originalExpiration + 365 days)`
 
 Statuses: **Active** (no extension yet, not near expiry), **Extended** (has valid extensions), **Control Due** (≤14 days left — run a control to extend), **Expired** (past current expiration), **Verification Failed** (most recent control failed).
 

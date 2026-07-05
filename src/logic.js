@@ -58,12 +58,31 @@ function daysBetween(a, b) {
 }
 
 /**
- * Compute the number of extension days earned by a set of controls.
- * Only passing controls count; the total is capped at MAX_EXTENSION_DAYS.
+ * Compute the expiration date earned from a set of controls.
+ *
+ * Each PASSING control extends the expiration to 60 days after the date that
+ * control was run. The most recent (latest-dated) passing control therefore
+ * governs the current expiration. The result never falls before the original
+ * expiration and is capped at MAX_EXTENSION_DAYS beyond it (one year).
+ *
+ * @returns {{ date: Date, atCap: boolean }}
  */
-function extensionDaysFromControls(controls) {
-  const passes = (controls || []).filter((c) => c && c.outcome === PASS).length;
-  return Math.min(passes * EXTENSION_DAYS_PER_CONTROL, MAX_EXTENSION_DAYS);
+function extendedExpiration(original, controls) {
+  const capDate = addDays(original, MAX_EXTENSION_DAYS);
+  let exp = original;
+  for (const c of controls || []) {
+    if (!c || c.outcome !== PASS) continue;
+    const runDate = parseDate(c.dateConducted);
+    if (!runDate) continue;
+    const candidate = addDays(runDate, EXTENSION_DAYS_PER_CONTROL);
+    if (candidate.getTime() > exp.getTime()) exp = candidate;
+  }
+  let atCap = false;
+  if (exp.getTime() >= capDate.getTime()) {
+    exp = capDate;
+    atCap = true;
+  }
+  return { date: exp, atCap };
 }
 
 /**
@@ -87,10 +106,15 @@ function computeLotStatus(lot, asOf) {
 
   const passCount = controls.filter((c) => c.outcome === PASS).length;
   const failCount = controls.filter((c) => c.outcome === FAIL).length;
-  const extensionDays = extensionDaysFromControls(controls);
-  const currentExpiration = original ? addDays(original, extensionDays) : null;
 
-  const atExtensionCap = extensionDays >= MAX_EXTENSION_DAYS;
+  // Each passing control extends the expiration to (control date + 60 days).
+  const extension = original ? extendedExpiration(original, controls) : null;
+  const currentExpiration = extension ? extension.date : null;
+  const atExtensionCap = extension ? extension.atCap : false;
+  const extensionDays = (original && currentExpiration)
+    ? daysBetween(currentExpiration, original)
+    : 0;
+
   const daysRemaining = currentExpiration && today
     ? daysBetween(currentExpiration, today)
     : null;
@@ -138,6 +162,6 @@ module.exports = {
   formatDate,
   addDays,
   daysBetween,
-  extensionDaysFromControls,
+  extendedExpiration,
   computeLotStatus,
 };
