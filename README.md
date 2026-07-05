@@ -26,6 +26,10 @@ For every POCT lot:
 
 Every write is attributed to the signed-in staff member and recorded in an **audit log**.
 
+Customers can download a **PDF Certificate of Shelf-Life Extension** for any lot (from the customer
+view or the lot-detail dialog) documenting the original expiration, the control history, and the
+verified current expiration — a record they can keep on file to justify continued use of the kit.
+
 ## Running it
 
 ```bash
@@ -78,6 +82,7 @@ Read-only (public):
 
 - `GET /api/lots?q=<search>` — list lots with computed status
 - `GET /api/lots/:id` — one lot
+- `GET /api/lots/:id/certificate.pdf` — downloadable PDF Certificate of Shelf-Life Extension
 - `GET /api/config` — extension rules (`60` days/control, `365`-day cap)
 
 Auth:

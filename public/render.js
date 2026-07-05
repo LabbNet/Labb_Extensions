@@ -44,6 +44,11 @@ const Render = (() => {
     return `+${lot.extensionDays} days${cap}`;
   }
 
+  function certificateButton(lot) {
+    return `<a class="btn small" style="text-decoration:none"
+      href="/api/lots/${encodeURIComponent(lot.id)}/certificate.pdf">⬇ Download Certificate (PDF)</a>`;
+  }
+
   /** Build the innerHTML for the lot-detail modal body. */
   function lotDetail(lot) {
     const controls = (lot.controls || []).slice().sort((a, b) =>
@@ -68,7 +73,10 @@ const Render = (() => {
         <div class="cell"><div class="k">Days Remaining</div><div class="v">${daysPill(lot.daysRemaining)}</div></div>
         <div class="cell"><div class="k">Status</div><div class="v">${statusBadge(lot.status)}</div></div>
       </div>
-      <h3 style="margin:0 0 10px">Control History</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 10px">
+        <h3 style="margin:0">Control History</h3>
+        ${certificateButton(lot)}
+      </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Date Conducted</th><th>Outcome</th><th>Performed By</th><th>Notes</th></tr></thead>
@@ -77,7 +85,7 @@ const Render = (() => {
       </div>`;
   }
 
-  return { esc, statusBadge, outcomeBadge, daysPill, extensionLabel, lotDetail };
+  return { esc, statusBadge, outcomeBadge, daysPill, extensionLabel, lotDetail, certificateButton };
 })();
 
 if (typeof window !== 'undefined') window.Render = Render;

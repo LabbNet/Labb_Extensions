@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { createStore } = require('./src/store');
 const logic = require('./src/logic');
+const { streamCertificate } = require('./src/certificate');
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'poct.db');
@@ -101,6 +102,18 @@ app.get('/api/lots/:id', (req, res) => {
   const lot = db.getLot(req.params.id);
   if (!lot) return res.status(404).json({ error: 'Lot not found' });
   return res.json({ lot: serializeLot(lot) });
+});
+
+// Downloadable PDF certificate (public, so customers can keep it on file).
+app.get('/api/lots/:id/certificate.pdf', (req, res) => {
+  const raw = db.getLot(req.params.id);
+  if (!raw) return res.status(404).json({ error: 'Lot not found' });
+  const lot = serializeLot(raw);
+  const safe = (s) => String(s || '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  const filename = `Labb-POCT-Certificate-${safe(lot.poctName)}-${safe(lot.lotNumber)}.pdf`;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  return streamCertificate(res, lot, logic.formatDate(new Date()));
 });
 
 // ---- Write API (signed-in staff) -----------------------------------------

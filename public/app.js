@@ -21,7 +21,7 @@
       allLots = data.lots || [];
       apply();
     } catch (err) {
-      rowsEl.innerHTML = `<tr><td colspan="7" class="muted">Could not load lots: ${esc(err.message)}</td></tr>`;
+      rowsEl.innerHTML = `<tr><td colspan="8" class="muted">Could not load lots: ${esc(err.message)}</td></tr>`;
     }
   }
 
@@ -44,10 +44,14 @@
         <td>${extensionLabel(l)}</td>
         <td>${daysPill(l.daysRemaining)}</td>
         <td>${statusBadge(l.status)}</td>
+        <td><a class="btn small" style="text-decoration:none" href="/api/lots/${encodeURIComponent(l.id)}/certificate.pdf" data-cert>⬇ PDF</a></td>
       </tr>`).join('');
 
     rowsEl.querySelectorAll('tr.clickable').forEach((tr) => {
-      tr.addEventListener('click', () => openDetail(tr.getAttribute('data-id')));
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('[data-cert]')) return; // let the download link work
+        openDetail(tr.getAttribute('data-id'));
+      });
     });
   }
 
