@@ -1,6 +1,12 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
+
+// The ONE by Labb logo, embedded on the certificate when present. Drop a PNG
+// (or JPEG) here — or point LOGO_FILE at one — and it appears automatically.
+const LOGO_FILE = process.env.LOGO_FILE || path.join(__dirname, '..', 'public', 'img', 'logo.png');
 
 /**
  * Stream a Certificate of Shelf-Life Extension for a POCT lot as a PDF.
@@ -24,15 +30,38 @@ function streamCertificate(res, lot, issuedOn) {
   const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const left = doc.page.margins.left;
 
-  // ---- Header band --------------------------------------------------------
-  doc.rect(0, 0, doc.page.width, 96).fill(BRAND);
-  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(20)
-    .text('Labb POCT', left, 30);
-  doc.font('Helvetica').fontSize(11).fillColor('#d7eff0')
-    .text('Certificate of Shelf-Life Extension', left, 56);
+  // ---- Header (white, with the ONE by Labb logo) --------------------------
+  // Slim brand accent stripe across the very top.
+  doc.rect(0, 0, doc.page.width, 8).fill(BRAND);
+
+  const headerTop = 34;
+  let logoBottom = headerTop;
+  let usedLogo = false;
+  if (fs.existsSync(LOGO_FILE)) {
+    try {
+      const logoH = 46;
+      doc.image(LOGO_FILE, left, headerTop, { height: logoH });
+      logoBottom = headerTop + logoH;
+      usedLogo = true;
+    } catch {
+      usedLogo = false;
+    }
+  }
+  if (!usedLogo) {
+    // Text wordmark fallback until the logo file is added.
+    doc.font('Helvetica-Bold').fontSize(26).fillColor('#111111').text('ONE', left, headerTop);
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#8a8a8a').text('by Labb', left + 2, headerTop + 28);
+    logoBottom = headerTop + 46;
+  }
+
+  doc.font('Helvetica').fontSize(11).fillColor(SOFT)
+    .text('Certificate of Shelf-Life Extension', left, logoBottom + 8);
+
+  const dividerY = doc.y + 12;
+  doc.moveTo(left, dividerY).lineTo(left + pageWidth, dividerY).lineWidth(1).stroke(LINE);
   doc.fillColor(INK);
 
-  let y = 132;
+  let y = dividerY + 22;
 
   // ---- Title / statement --------------------------------------------------
   doc.font('Helvetica-Bold').fontSize(16).fillColor(INK)
