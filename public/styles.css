@@ -49,8 +49,21 @@ header.topbar .inner {
 }
 header.topbar .brand {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
+}
+/* Logo knocked out to white so the black artwork reads on the teal bar. */
+header.topbar .brand-logo {
+  height: 34px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  display: block;
+}
+header.topbar .brand .divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.3);
+  margin: 4px 0;
 }
 header.topbar h1 { font-size: 1.25rem; margin: 0; font-weight: 700; letter-spacing: 0.2px; }
 header.topbar .tag { font-size: 0.85rem; opacity: 0.85; }
