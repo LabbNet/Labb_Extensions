@@ -2,6 +2,8 @@ node_modules/
 npm-debug.log*
 
 # Runtime data (keep the app's live database out of version control)
+data/poct.db
+data/poct.db-*
 data/poct.json
 data/*.tmp
 *.tmp

@@ -1,21 +1,25 @@
 'use strict';
 
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
-const { Store } = require('./src/store');
+const { Db } = require('./src/db');
 const logic = require('./src/logic');
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'poct.json');
-// Shared secret required to record lots/controls. Read-only endpoints are open
-// so customers can view extensions without a token.
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'labb-admin';
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'poct.db');
+const LEGACY_JSON = process.env.DATA_FILE || path.join(__dirname, 'data', 'poct.json');
+// Bootstrap admin used only when the users table is empty (first run).
+const BOOTSTRAP_USER = process.env.ADMIN_USER || 'admin';
+const BOOTSTRAP_PASSWORD = process.env.ADMIN_PASSWORD || 'labb-admin';
 
-const store = new Store(DATA_FILE);
+const db = new Db(DB_FILE);
+bootstrap(db);
+
 const app = express();
 app.use(express.json());
 
-/** Attach the computed status to a stored lot for API responses. */
+/** Attach computed status to a stored lot for API responses. */
 function serializeLot(lot) {
   const status = logic.computeLotStatus(lot);
   return {
@@ -23,17 +27,53 @@ function serializeLot(lot) {
     poctName: lot.poctName,
     lotNumber: lot.lotNumber,
     createdAt: lot.createdAt,
+    createdBy: lot.createdBy || null,
     ...status,
   };
 }
 
-function requireAdmin(req, res, next) {
-  const token = req.get('x-admin-token') || (req.body && req.body.adminToken);
-  if (token !== ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized. A valid admin token is required.' });
-  }
+// ---- Auth middleware ------------------------------------------------------
+
+function currentUser(req) {
+  const header = req.get('authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : req.get('x-session-token');
+  return db.userForToken(token);
+}
+
+function requireAuth(req, res, next) {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in required.' });
+  req.user = user;
   return next();
 }
+
+function requireAdmin(req, res, next) {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in required.' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'Administrator access required.' });
+  req.user = user;
+  return next();
+}
+
+// ---- Auth endpoints -------------------------------------------------------
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  const result = db.login(username, password);
+  if (!result) return res.status(401).json({ error: 'Invalid username or password.' });
+  return res.json(result);
+});
+
+app.post('/api/logout', requireAuth, (req, res) => {
+  const header = req.get('authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : req.get('x-session-token');
+  db.logout(token);
+  res.json({ ok: true });
+});
+
+app.get('/api/me', requireAuth, (req, res) => {
+  res.json({ user: db.publicUser(req.user) });
+});
 
 // ---- Read-only API (public / customer facing) ----------------------------
 
@@ -48,26 +88,24 @@ app.get('/api/config', (_req, res) => {
 
 app.get('/api/lots', (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase();
-  let lots = store.listLots().map(serializeLot);
+  let lots = db.listLots().map(serializeLot);
   if (q) {
     lots = lots.filter(
       (l) => l.poctName.toLowerCase().includes(q) || l.lotNumber.toLowerCase().includes(q),
     );
   }
-  lots.sort((a, b) => a.poctName.localeCompare(b.poctName)
-    || a.lotNumber.localeCompare(b.lotNumber));
   res.json({ lots });
 });
 
 app.get('/api/lots/:id', (req, res) => {
-  const lot = store.getLot(req.params.id);
+  const lot = db.getLot(req.params.id);
   if (!lot) return res.status(404).json({ error: 'Lot not found' });
   return res.json({ lot: serializeLot(lot) });
 });
 
-// ---- Write API (Labb staff only) -----------------------------------------
+// ---- Write API (signed-in staff) -----------------------------------------
 
-app.post('/api/lots', requireAdmin, async (req, res) => {
+app.post('/api/lots', requireAuth, async (req, res) => {
   const { poctName, lotNumber, originalExpiration } = req.body || {};
   if (!poctName || !String(poctName).trim()) {
     return res.status(400).json({ error: 'poctName is required' });
@@ -79,19 +117,19 @@ app.post('/api/lots', requireAdmin, async (req, res) => {
   if (!exp) {
     return res.status(400).json({ error: 'originalExpiration must be a valid YYYY-MM-DD date' });
   }
-  const existing = store.findLot(poctName, lotNumber);
+  const existing = db.findLot(poctName, lotNumber);
   if (existing) {
     return res.status(409).json({
       error: 'A lot with this POCT name and lot number already exists',
       lot: serializeLot(existing),
     });
   }
-  const lot = await store.addLot({ poctName, lotNumber, originalExpiration: exp });
+  const lot = db.addLot({ poctName, lotNumber, originalExpiration: exp }, req.user);
   return res.status(201).json({ lot: serializeLot(lot) });
 });
 
-app.post('/api/lots/:id/controls', requireAdmin, async (req, res) => {
-  const lot = store.getLot(req.params.id);
+app.post('/api/lots/:id/controls', requireAuth, async (req, res) => {
+  const lot = db.getLot(req.params.id);
   if (!lot) return res.status(404).json({ error: 'Lot not found' });
 
   const { dateConducted, outcome, performedBy, notes } = req.body || {};
@@ -102,25 +140,106 @@ app.post('/api/lots/:id/controls', requireAdmin, async (req, res) => {
   if (outcome !== logic.PASS && outcome !== logic.FAIL) {
     return res.status(400).json({ error: `outcome must be "${logic.PASS}" or "${logic.FAIL}"` });
   }
-  await store.addControl(lot.id, { dateConducted: date, outcome, performedBy, notes });
-  return res.status(201).json({ lot: serializeLot(store.getLot(lot.id)) });
+  db.addControl(lot.id, { dateConducted: date, outcome, performedBy, notes }, req.user);
+  return res.status(201).json({ lot: serializeLot(db.getLot(lot.id)) });
 });
 
-app.delete('/api/lots/:id', requireAdmin, async (req, res) => {
-  const ok = await store.deleteLot(req.params.id);
+app.delete('/api/lots/:id', requireAuth, async (req, res) => {
+  const ok = db.deleteLot(req.params.id, req.user);
   if (!ok) return res.status(404).json({ error: 'Lot not found' });
   return res.json({ ok: true });
+});
+
+// ---- User management (admins only) ---------------------------------------
+
+app.get('/api/users', requireAdmin, (_req, res) => {
+  res.json({ users: db.listUsers().map((u) => db.publicUser(u)) });
+});
+
+app.post('/api/users', requireAdmin, (req, res) => {
+  const { username, password, displayName, role } = req.body || {};
+  if (!password || String(password).length < 6) {
+    return res.status(400).json({ error: 'password must be at least 6 characters' });
+  }
+  try {
+    const user = db.createUser({ username, password, displayName, role }, req.user);
+    return res.status(201).json({ user });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/users/:id/active', requireAdmin, (req, res) => {
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: 'You cannot change your own active status.' });
+  }
+  const ok = db.setUserActive(req.params.id, !!(req.body && req.body.active), req.user);
+  if (!ok) return res.status(404).json({ error: 'User not found' });
+  return res.json({ ok: true });
+});
+
+// ---- Audit log (signed-in staff) -----------------------------------------
+
+app.get('/api/audit', requireAuth, (req, res) => {
+  const limit = Number(req.query.limit) || 100;
+  res.json({ entries: db.listAudit(limit) });
 });
 
 // ---- Static front end -----------------------------------------------------
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+/**
+ * First-run setup: create an admin user if none exist, and import any legacy
+ * JSON data file left over from the file-based store.
+ */
+function bootstrap(database) {
+  if (database.countUsers() === 0) {
+    database.createUser({
+      username: BOOTSTRAP_USER,
+      password: BOOTSTRAP_PASSWORD,
+      displayName: 'Administrator',
+      role: 'admin',
+    }, { id: null, username: 'system' });
+    console.log(`Created bootstrap admin user "${BOOTSTRAP_USER}".`);
+    if (BOOTSTRAP_PASSWORD === 'labb-admin') {
+      console.warn('WARNING: using the default admin password. Set ADMIN_PASSWORD in production.');
+    }
+  }
+
+  if (database.listLots().length === 0 && fs.existsSync(LEGACY_JSON)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(LEGACY_JSON, 'utf8'));
+      const lots = Array.isArray(parsed.lots) ? parsed.lots : [];
+      let imported = 0;
+      for (const lot of lots) {
+        const created = database.addLot({
+          poctName: lot.poctName,
+          lotNumber: lot.lotNumber,
+          originalExpiration: lot.originalExpiration,
+        }, { id: null, username: 'migration' });
+        for (const c of lot.controls || []) {
+          database.addControl(created.id, {
+            dateConducted: c.dateConducted,
+            outcome: c.outcome,
+            performedBy: c.performedBy,
+            notes: c.notes,
+          }, { id: null, username: 'migration' });
+        }
+        imported += 1;
+      }
+      if (imported) console.log(`Migrated ${imported} lot(s) from legacy JSON store (${LEGACY_JSON}).`);
+    } catch (err) {
+      console.error(`Could not migrate legacy JSON store: ${err.message}`);
+    }
+  }
+}
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Labb POCT Control Tracker listening on http://localhost:${PORT}`);
-    console.log(`Data file: ${DATA_FILE}`);
+    console.log(`Database: ${DB_FILE}`);
   });
 }
 
-module.exports = { app, store };
+module.exports = { app, db };

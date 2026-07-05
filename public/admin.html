@@ -15,27 +15,40 @@
       </div>
       <nav>
         <a href="index.html">Customer View</a>
-        <a href="admin.html">Staff Console</a>
+        <span id="who" class="tag" style="margin-left:18px"></span>
+        <a href="#" id="logout" style="display:none">Sign out</a>
       </nav>
     </div>
   </header>
 
-  <main>
+  <!-- Login gate -->
+  <main id="login-view" style="max-width:420px">
+    <div class="card">
+      <div class="section-title">Staff Sign In</div>
+      <div id="login-notice"></div>
+      <div class="grid-form" style="grid-template-columns:1fr">
+        <div class="field">
+          <label for="login-user">Username</label>
+          <input type="text" id="login-user" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="login-pass">Password</label>
+          <input type="password" id="login-pass" autocomplete="current-password" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="login-btn">Sign In</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Authenticated console -->
+  <main id="app-view" style="display:none">
     <div class="intro">
       Record new POCT lots and log quality-control runs. Each <strong>passing</strong> control
       extends the lot's shelf life by 60 days (up to one year total). A <strong>failing</strong>
       control records the result but grants no extension and flags the lot as failed verification.
-      Everything you record here is immediately visible on the customer view.
-    </div>
-
-    <!-- Admin token -->
-    <div class="card">
-      <div class="token-bar">
-        <label for="token" style="font-weight:600;font-size:0.85rem">Admin token</label>
-        <input type="password" id="token" placeholder="Enter admin token to enable editing" />
-        <button class="btn secondary small" id="save-token">Save</button>
-        <span class="muted" id="token-state"></span>
-      </div>
+      Every action is attributed to your account and written to the audit log.
     </div>
 
     <!-- New lot -->
@@ -83,7 +96,7 @@
         </div>
         <div class="field">
           <label for="ctl-by">Performed By</label>
-          <input type="text" id="ctl-by" placeholder="Technician name / initials" />
+          <input type="text" id="ctl-by" placeholder="Defaults to your name" />
         </div>
         <div class="field" style="grid-column: 1 / -1">
           <label for="ctl-notes">Notes (optional)</label>
@@ -110,6 +123,53 @@
         </table>
       </div>
       <div class="empty" id="admin-empty" style="display:none">No lots recorded yet.</div>
+    </div>
+
+    <!-- User management (admins only) -->
+    <div class="card" id="users-card" style="display:none">
+      <div class="section-title">Staff Accounts <span class="muted">(administrators only)</span></div>
+      <div id="user-notice"></div>
+      <div class="grid-form">
+        <div class="field">
+          <label for="u-username">Username</label>
+          <input type="text" id="u-username" />
+        </div>
+        <div class="field">
+          <label for="u-display">Display Name</label>
+          <input type="text" id="u-display" />
+        </div>
+        <div class="field">
+          <label for="u-pass">Temporary Password</label>
+          <input type="text" id="u-pass" placeholder="min 6 characters" />
+        </div>
+        <div class="field">
+          <label for="u-role">Role</label>
+          <select id="u-role">
+            <option value="staff">Staff</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="add-user">Create Account</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead>
+          <tbody id="user-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Audit log -->
+    <div class="card">
+      <div class="section-title">Recent Activity <span class="muted">(audit log)</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
     </div>
   </main>
 

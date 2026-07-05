@@ -4,10 +4,10 @@
   "description": "Track quality-control runs on Labb rapid point-of-care tests and the resulting shelf-life extensions, and publish them for customers.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "test": "node --test",
-    "seed": "node scripts/seed.js"
+    "start": "node --experimental-sqlite server.js",
+    "dev": "node --experimental-sqlite --watch server.js",
+    "test": "node --experimental-sqlite --test",
+    "seed": "node --experimental-sqlite scripts/seed.js"
   },
   "keywords": [
     "poct",

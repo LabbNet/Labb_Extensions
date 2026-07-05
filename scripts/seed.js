@@ -1,17 +1,18 @@
 'use strict';
 
 /**
- * Populate the data file with a few example lots and controls so the app has
- * something to show on first run. Safe to run repeatedly — it skips lots that
- * already exist.
+ * Populate the database with a few example lots, controls, and a demo staff
+ * user so the app has something to show on first run. Safe to run repeatedly —
+ * it skips lots/users that already exist.
  *
  *   npm run seed
  */
 
 const path = require('path');
-const { Store } = require('../src/store');
+const { Db } = require('../src/db');
 
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, '..', 'data', 'poct.json');
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, '..', 'data', 'poct.db');
+const SYSTEM = { id: null, username: 'seed' };
 
 const SAMPLES = [
   {
@@ -52,27 +53,37 @@ const SAMPLES = [
   },
 ];
 
-async function main() {
-  const store = new Store(DATA_FILE);
+function main() {
+  const db = new Db(DB_FILE);
+
+  // Ensure an admin exists so the app is usable immediately.
+  if (db.countUsers() === 0) {
+    db.createUser({ username: 'admin', password: 'labb-admin', displayName: 'Administrator', role: 'admin' }, SYSTEM);
+    console.log('Created admin user (admin / labb-admin) — change this password!');
+  }
+  if (!db.getUserByUsername('tech')) {
+    db.createUser({ username: 'tech', password: 'labb-tech', displayName: 'Demo Technician', role: 'staff' }, SYSTEM);
+    console.log('Created staff user (tech / labb-tech).');
+  }
+
   for (const sample of SAMPLES) {
-    if (store.findLot(sample.poctName, sample.lotNumber)) {
+    if (db.findLot(sample.poctName, sample.lotNumber)) {
       console.log(`Skipping existing lot: ${sample.poctName} / ${sample.lotNumber}`);
       continue;
     }
-    const lot = await store.addLot({
+    const lot = db.addLot({
       poctName: sample.poctName,
       lotNumber: sample.lotNumber,
       originalExpiration: sample.originalExpiration,
-    });
+    }, SYSTEM);
     for (const c of sample.controls) {
-      await store.addControl(lot.id, c);
+      db.addControl(lot.id, c, SYSTEM);
     }
     console.log(`Seeded: ${sample.poctName} / ${sample.lotNumber} (${sample.controls.length} controls)`);
   }
-  console.log(`\nDone. Data file: ${DATA_FILE}`);
+
+  console.log(`\nDone. Database: ${DB_FILE}`);
+  db.close();
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main();
