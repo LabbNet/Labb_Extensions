@@ -60,6 +60,32 @@ Read-only endpoints and the customer view require no sign-in.
 ADMIN_USER="you@labb.net" ADMIN_PASSWORD="a-strong-secret" npm start
 ```
 
+## Deploying online (Render)
+
+The repo includes a [`render.yaml`](render.yaml) blueprint that deploys the app
+as a web service with a **persistent disk**, so lot and control data survive
+restarts and redeploys.
+
+1. Push this branch to GitHub (already done if you're reading this there).
+2. Go to <https://dashboard.render.com> → **New** → **Blueprint**, and connect
+   this repository. Render reads `render.yaml` automatically.
+3. When prompted, set a strong **`ADMIN_PASSWORD`** (it is intentionally not
+   stored in the repo). Optionally change `ADMIN_USER`.
+4. Click **Apply**. Render provisions the service and a 1 GB disk mounted at
+   `/var/data`; the app stores its database there.
+5. When the deploy finishes you get a public URL like
+   `https://labb-poct-tracker.onrender.com` — that's the customer view. Staff
+   sign in at `…/admin.html`.
+
+Notes:
+- The `starter` plan is used because persistent disks require a paid instance
+  (~$7/mo). Free instances have **ephemeral** storage and would lose data on
+  redeploy.
+- `PORT` is provided by Render automatically; the app already honors it.
+- `autoDeploy` is on, so pushing to the deploy branch ships a new version.
+- A [`Dockerfile`](Dockerfile) is included for other container hosts (Fly.io,
+  Railway, a VPS); mount a volume at `/var/data` to persist data.
+
 ### Configuration
 
 | Variable | Default | Purpose |
