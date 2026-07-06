@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Labb POCT Shelf-Life Extensions</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <div class="brand">
+        <img class="brand-logo" src="img/logo.png" alt="ONE by Labb"
+             onerror="this.nextElementSibling.remove(); this.remove()" />
+        <span class="divider"></span>
+        <h1>Labb POCT Shelf-Life Tracker</h1>
+        <span class="tag">Verified control-based expiration extensions</span>
+      </div>
+      <nav>
+        <a href="index.html">Lookup</a>
+        <a href="admin.html">Staff Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="intro">
+      Labb rapid point-of-care tests (POCTs) ship with a 24-month expiration date.
+      When a lot reaches expiration, its shelf life can be <strong>extended by running quality controls</strong>.
+      Each passing control extends the lot's expiration to <strong>60 days after the control date</strong>,
+      and controls can be repeated to extend a lot for <strong>up to one additional year</strong> beyond its
+      original expiration. Look up your POCT lot number below to confirm its current verified expiration date.
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search by POCT name or lot number…" autocomplete="off" />
+      <span class="muted" id="count"></span>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>POCT</th>
+              <th>Lot #</th>
+              <th>Original Expiration</th>
+              <th>Current Expiration</th>
+              <th>Extension</th>
+              <th>Days Left</th>
+              <th>Status</th>
+              <th>Certificate</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" style="display:none">No matching lots found.</div>
+    </div>
+  </main>
+
+  <!-- Lot detail modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="m-title">Lot detail</h2>
+        <button class="close" id="m-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    Labb POCT Shelf-Life Tracker &middot; Expiration extensions are recorded by Labb staff after
+    successful quality-control verification.
+  </footer>
+
+  <script src="render.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

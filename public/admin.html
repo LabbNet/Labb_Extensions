@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Labb POCT Tracker — Staff</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <div class="brand">
+        <img class="brand-logo" src="img/logo.png" alt="ONE by Labb"
+             onerror="this.nextElementSibling.remove(); this.remove()" />
+        <span class="divider"></span>
+        <h1>Labb POCT Shelf-Life Tracker</h1>
+        <span class="tag">Staff console</span>
+      </div>
+      <nav>
+        <a href="index.html">Customer View</a>
+        <span id="who" class="tag" style="margin-left:18px"></span>
+        <a href="#" id="logout" style="display:none">Sign out</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Login gate -->
+  <main id="login-view" style="max-width:420px">
+    <div class="card">
+      <div class="section-title">Staff Sign In</div>
+      <div id="login-notice"></div>
+      <div class="grid-form" style="grid-template-columns:1fr">
+        <div class="field">
+          <label for="login-user">Username</label>
+          <input type="text" id="login-user" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="login-pass">Password</label>
+          <input type="password" id="login-pass" autocomplete="current-password" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="login-btn">Sign In</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Authenticated console -->
+  <main id="app-view" style="display:none">
+    <div class="intro">
+      Record new POCT lots and log quality-control runs. Each <strong>passing</strong> control
+      extends the lot's expiration to 60 days after the control date (up to one year beyond the
+      original expiration). A <strong>failing</strong> control records the result but grants no
+      extension and flags the lot as failed verification. Every action is attributed to your
+      account and written to the audit log.
+    </div>
+
+    <!-- New lot -->
+    <div class="card">
+      <div class="section-title">Add a POCT Lot</div>
+      <div id="lot-notice"></div>
+      <div class="grid-form">
+        <div class="field">
+          <label for="poctName">POCT Name</label>
+          <input type="text" id="poctName" placeholder="e.g. Labb Rapid Flu A/B" />
+        </div>
+        <div class="field">
+          <label for="lotNumber">Lot Number</label>
+          <input type="text" id="lotNumber" placeholder="e.g. LOT-24-00815" />
+        </div>
+        <div class="field">
+          <label for="originalExpiration">Original Expiration Date</label>
+          <input type="date" id="originalExpiration" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="add-lot">Add Lot</button>
+      </div>
+    </div>
+
+    <!-- Log control -->
+    <div class="card">
+      <div class="section-title">Log a Control Run</div>
+      <div id="control-notice"></div>
+      <div class="grid-form">
+        <div class="field">
+          <label for="ctl-lot">Lot</label>
+          <select id="ctl-lot"></select>
+        </div>
+        <div class="field">
+          <label for="ctl-date">Date Conducted</label>
+          <input type="date" id="ctl-date" />
+        </div>
+        <div class="field">
+          <label for="ctl-outcome">Outcome</label>
+          <select id="ctl-outcome">
+            <option value="Pass">Pass</option>
+            <option value="Fail">Fail</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ctl-by">Performed By</label>
+          <input type="text" id="ctl-by" placeholder="Defaults to your name" />
+        </div>
+        <div class="field" style="grid-column: 1 / -1">
+          <label for="ctl-notes">Notes (optional)</label>
+          <textarea id="ctl-notes" placeholder="Control lot #, instrument, observations…"></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="add-control">Record Control</button>
+      </div>
+    </div>
+
+    <!-- Existing lots -->
+    <div class="card">
+      <div class="section-title">Recorded Lots</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>POCT</th><th>Lot #</th><th>Original</th><th>Current</th>
+              <th>Extension</th><th>Controls</th><th>Days Left</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="admin-rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="admin-empty" style="display:none">No lots recorded yet.</div>
+    </div>
+
+    <!-- User management (admins only) -->
+    <div class="card" id="users-card" style="display:none">
+      <div class="section-title">Staff Accounts <span class="muted">(administrators only)</span></div>
+      <div id="user-notice"></div>
+      <div class="grid-form">
+        <div class="field">
+          <label for="u-username">Username</label>
+          <input type="text" id="u-username" />
+        </div>
+        <div class="field">
+          <label for="u-display">Display Name</label>
+          <input type="text" id="u-display" />
+        </div>
+        <div class="field">
+          <label for="u-pass">Temporary Password</label>
+          <input type="text" id="u-pass" placeholder="min 6 characters" />
+        </div>
+        <div class="field">
+          <label for="u-role">Role</label>
+          <select id="u-role">
+            <option value="staff">Staff</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="add-user">Create Account</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead>
+          <tbody id="user-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Audit log -->
+    <div class="card">
+      <div class="section-title">Recent Activity <span class="muted">(audit log)</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Lot detail modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="m-title">Lot detail</h2>
+        <button class="close" id="m-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <footer class="foot">Labb POCT Shelf-Life Tracker &middot; Staff console</footer>
+
+  <script src="render.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

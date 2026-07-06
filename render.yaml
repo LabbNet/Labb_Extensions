@@ -1,0 +1,31 @@
+# Render Blueprint — deploys the Labb POCT Control Tracker as a web service
+# with a persistent disk so lot/control data survives restarts and redeploys.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: labb-poct-tracker
+    runtime: node
+    plan: starter            # required for a persistent disk (~$7/mo)
+    region: oregon           # change if you prefer (e.g. frankfurt, singapore)
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true         # redeploy automatically on push to the deploy branch
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Data files live on the mounted persistent disk below.
+      - key: DATA_FILE
+        value: /var/data/poct.json
+      - key: DB_FILE
+        value: /var/data/poct.db
+      # First-run admin account. Set a strong password in the Render dashboard
+      # when prompted (sync:false keeps it out of the repo).
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+    disk:
+      name: poct-data
+      mountPath: /var/data
+      sizeGB: 1
