@@ -4,9 +4,22 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 
-// The ONE by Labb logo, embedded on the certificate when present. Drop a PNG
-// (or JPEG) here — or point LOGO_FILE at one — and it appears automatically.
-const LOGO_FILE = process.env.LOGO_FILE || path.join(__dirname, '..', 'public', 'img', 'logo.png');
+// The logo embedded on the certificate when present. Drop a PNG (or JPEG) at
+// public/logo.png (simplest) or public/img/logo.png, or point LOGO_FILE at one,
+// and it appears automatically.
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const LOGO_CANDIDATES = [
+  process.env.LOGO_FILE,
+  path.join(PUBLIC_DIR, 'logo.png'),
+  path.join(PUBLIC_DIR, 'img', 'logo.png'),
+].filter(Boolean);
+
+function findLogo() {
+  for (const p of LOGO_CANDIDATES) {
+    try { if (fs.existsSync(p)) return p; } catch { /* ignore */ }
+  }
+  return null;
+}
 
 /**
  * Stream a Certificate of Shelf-Life Extension for a POCT lot as a PDF.
@@ -37,10 +50,11 @@ function streamCertificate(res, lot, issuedOn) {
   const headerTop = 34;
   let logoBottom = headerTop;
   let usedLogo = false;
-  if (fs.existsSync(LOGO_FILE)) {
+  const logoFile = findLogo();
+  if (logoFile) {
     try {
       const logoH = 46;
-      doc.image(LOGO_FILE, left, headerTop, { height: logoH });
+      doc.image(logoFile, left, headerTop, { height: logoH });
       logoBottom = headerTop + logoH;
       usedLogo = true;
     } catch {
