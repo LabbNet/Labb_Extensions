@@ -86,6 +86,19 @@ Notes:
 - A [`Dockerfile`](Dockerfile) is included for other container hosts (Fly.io,
   Railway, a VPS); mount a volume at `/var/data` to persist data.
 
+### Uptime monitoring
+
+A scheduled GitHub Action ([`.github/workflows/health-check.yml`](.github/workflows/health-check.yml))
+pings `/api/health` every 15 minutes so an outage surfaces as a failed workflow
+run (and the usual GitHub failure email) instead of a surprise. It checks for
+`HTTP 200` with `{"ok":true}` and retries a few times to ride out cold starts.
+
+Point it at your deployment by setting a **`SITE_URL`** repository variable
+(Settings → Secrets and variables → Actions → Variables); otherwise it falls
+back to the Render blueprint URL `https://labb-poct-tracker.onrender.com`. You
+can also run it on demand from the **Actions** tab via **Run workflow**, passing
+a one-off URL to check.
+
 ### Configuration
 
 | Variable | Default | Purpose |

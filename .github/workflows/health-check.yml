@@ -1,0 +1,65 @@
+name: Health check
+
+# Pings the deployed site's /api/health endpoint on a schedule so an outage
+# shows up as a failed run (and an email from GitHub) instead of a surprise.
+#
+# Target URL resolution, first match wins:
+#   1. The `url` input (manual "Run workflow" dispatch)
+#   2. The `SITE_URL` repository/environment variable (Settings → Secrets and
+#      variables → Actions → Variables) — set this to your real deployment
+#   3. The Render blueprint default below
+#
+# The health endpoint returns `{"ok":true}` (see server.js). The run fails if
+# the endpoint is unreachable or does not return HTTP 200 with ok:true.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Base URL to check (overrides the SITE_URL variable)"
+        required: false
+        default: ""
+
+# Only one health check needs to run at a time; cancel any overlap.
+concurrency:
+  group: health-check
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /api/health
+        env:
+          BASE_URL: ${{ github.event.inputs.url || vars.SITE_URL || 'https://labb-poct-tracker.onrender.com' }}
+        run: |
+          set -euo pipefail
+          # Strip any trailing slash so we don't produce "//api/health".
+          base="${BASE_URL%/}"
+          url="$base/api/health"
+          echo "Checking $url"
+
+          # Retry a few times so one dropped packet (or a cold start) doesn't
+          # flap the check. Up to ~5 attempts over ~75s before giving up.
+          attempt=0
+          max=5
+          while :; do
+            attempt=$((attempt + 1))
+            code=$(curl -sS -m 30 -o body.txt -w "%{http_code}" "$url" || echo "000")
+            body=$(cat body.txt 2>/dev/null || true)
+            echo "Attempt $attempt/$max -> HTTP $code  body: ${body:-<empty>}"
+
+            if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+              echo "Site is live ✅"
+              exit 0
+            fi
+
+            if [ "$attempt" -ge "$max" ]; then
+              echo "::error title=Site health check failed::$url did not return HTTP 200 with {\"ok\":true} after $max attempts (last: HTTP $code)"
+              exit 1
+            fi
+            sleep 15
+          done
